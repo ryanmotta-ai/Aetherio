@@ -4,6 +4,7 @@ import { GOVERNMENTS } from '../../civ/Government';
 import type { Screen } from '../core/ScreenManager';
 import type { GameContext } from '../core/GameContext';
 import { chronicle } from '../../civ/Chronicle';
+import { stockChart } from '../components/Charts';
 
 export type EconomySubTab = 'stock_market' | 'goods_matrix' | 'trade_sanctions';
 
@@ -412,156 +413,24 @@ export class EconomyScreen implements Screen {
     return root;
   }
 
-  private renderChartCanvas(history: number[], isUp: boolean, goodName: string): HTMLElement {
-    const wrapper = el('div', { class: 'stock-canvas-wrapper', style: 'position: relative; width: 100%; height: 220px;' });
-    const canvas = document.createElement('canvas');
-    canvas.width = 650;
-    canvas.height = 220;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.borderRadius = '8px';
-    canvas.style.background = 'rgba(0, 0, 0, 0.35)';
-    canvas.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-
-    wrapper.appendChild(canvas);
-
-    // Ensure we always have at least 10 data points for a smooth, rich curve even on Year 1
+  private renderChartCanvas(history: number[], isUp: boolean, _goodName: string): HTMLElement {
+    // Ensure we always have at least 8 data points so the line has some shape even on Year 1
     let data = [...history];
     if (data.length < 2) {
       const base = data[0] || 10;
-      data = [
-        base * 0.96,
-        base * 0.98,
-        base * 1.02,
-        base * 0.99,
-        base * 1.04,
-        base * 1.01,
-        base * 1.03,
-        base * 0.97,
-        base * 1.05,
-        base
-      ];
+      data = [0.96, 0.98, 1.02, 0.99, 1.04, 1.01, 1.03, 0.97, 1.05, 1].map(f => base * f);
     } else if (data.length < 8) {
-      // Pad out short histories with gentle initial curve
       const first = data[0];
       const prefix: number[] = [];
-      for (let i = 0; i < 8 - data.length; i++) {
-        prefix.push(first * (0.95 + Math.sin(i) * 0.04));
-      }
+      for (let i = 0; i < 8 - data.length; i++) prefix.push(first * (0.95 + Math.sin(i) * 0.04));
       data = [...prefix, ...data];
     }
 
-    setTimeout(() => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const width = canvas.width;
-      const height = canvas.height;
-      const padLeft = 45;
-      const padRight = 20;
-      const padTop = 25;
-      const padBottom = 30;
-
-      const chartW = width - padLeft - padRight;
-      const chartH = height - padTop - padBottom;
-
-      const minVal = Math.min(...data) * 0.92;
-      const maxVal = Math.max(...data) * 1.08;
-      const range = maxVal - minVal || 1;
-
-      const themeColor = isUp ? '#4ade80' : '#f87171';
-
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. Draw Grid Lines & Y-Axis Labels
-      ctx.font = '11px sans-serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.textAlign = 'right';
-
-      const gridSteps = 4;
-      for (let i = 0; i <= gridSteps; i++) {
-        const yFrac = i / gridSteps;
-        const y = padTop + chartH * (1 - yFrac);
-        const val = minVal + range * yFrac;
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(padLeft, y);
-        ctx.lineTo(width - padRight, y);
-        ctx.stroke();
-
-        ctx.setLineDash([]);
-        ctx.fillText(`${val.toFixed(1)} 🪙`, padLeft - 6, y + 4);
-      }
-
-      // X-Axis Year Labels
-      ctx.textAlign = 'center';
-      const xSteps = Math.min(6, data.length - 1);
-      for (let i = 0; i <= xSteps; i++) {
-        const index = Math.floor((i / xSteps) * (data.length - 1));
-        const x = padLeft + (index / (data.length - 1)) * chartW;
-        ctx.fillText(`Ano ${index + 1}`, x, height - 10);
-      }
-
-      // Calculate Point Coordinates
-      const points = data.map((val, idx) => {
-        const x = padLeft + (idx / (data.length - 1)) * chartW;
-        const y = padTop + (1 - (val - minVal) / range) * chartH;
-        return { x, y, val };
-      });
-
-      // 2. Draw Gradient Fill Area
-      const grad = ctx.createLinearGradient(0, padTop, 0, height - padBottom);
-      grad.addColorStop(0, isUp ? 'rgba(74, 222, 128, 0.35)' : 'rgba(248, 113, 113, 0.35)');
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
-
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, height - padBottom);
-      points.forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.lineTo(points[points.length - 1].x, height - padBottom);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      // 3. Draw Trend Line with Glow
-      ctx.shadowColor = themeColor;
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = themeColor;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      points.forEach((p, idx) => {
-        if (idx === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
-      ctx.stroke();
-      ctx.shadowBlur = 0; // reset shadow
-
-      // 4. Draw Data Point Dots & Peak Highlight
-      points.forEach((p, idx) => {
-        if (idx === points.length - 1 || idx % Math.ceil(points.length / 8) === 0) {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = themeColor;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, idx === points.length - 1 ? 5 : 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
-      });
-
-      // 5. Draw End Point Callout Badge
-      const lastPoint = points[points.length - 1];
-      ctx.fillStyle = themeColor;
-      ctx.fillRect(lastPoint.x - 45, lastPoint.y - 24, 48, 18);
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${lastPoint.val.toFixed(1)} 🪙`, lastPoint.x - 21, lastPoint.y - 11);
-
-    }, 20);
-
-    return wrapper;
+    return stockChart(data, isUp ? '#7fb069' : '#d9534f', {
+      height: 220,
+      yRange: [Math.min(...data) * 0.92, Math.max(...data) * 1.08],
+      callout: v => v.toFixed(1)
+    });
   }
 
   private getFinancialNews(ctx: GameContext): { year: number; text: string }[] {

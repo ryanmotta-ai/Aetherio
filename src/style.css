@@ -415,23 +415,41 @@ input:checked ~ .switch-track .switch-knob { transform: translateX(18px); backgr
   flex: 0 0 auto;
 }
 
-/* Charts */
+/* Charts — pixel-art, riveted-steel (Iron Front) look */
+.pixel-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .chart canvas { display: block; }
-.chart-legend, .donut-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; }
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); }
-.legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.chart-legend, .donut-legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 10px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-pixel); font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
+.legend-swatch { width: 9px; height: 9px; border-radius: 0; flex: 0 0 auto; box-shadow: 0 0 0 1px #07090b, inset 1px 1px 0 rgba(255, 255, 255, 0.35); }
 .donut { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.donut .pixel-canvas { width: auto; flex: 0 0 auto; }
 .donut-legend { flex-direction: column; gap: 7px; margin: 0; }
 .donut-legend .legend-item { justify-content: space-between; min-width: 180px; }
 .legend-name { flex: 1; }
 .legend-value { font-weight: 700; color: var(--text); }
+.sparkline .pixel-canvas { width: auto; }
 
 .bar-list { display: flex; flex-direction: column; gap: 13px; }
 .bar-head { display: flex; justify-content: space-between; font-size: 0.8125rem; margin-bottom: 5px; }
 .bar-label { font-weight: 600; }
-.bar-value { font-weight: 800; color: var(--gold); }
-.bar-track { height: 8px; background: rgba(0, 0, 0, 0.45); border-radius: 99px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 99px; transition: width var(--med); }
+.bar-value { font-family: var(--font-pixel); font-size: 0.6875rem; font-weight: 400; color: var(--gold); }
+.bar-list .bar-track {
+  height: 12px;
+  padding: 2px;
+  background: #0b0e11;
+  border-radius: 0;
+  border: 1px solid #07090b;
+  box-shadow: inset 0 0 0 1px #4a5560, inset 0 2px 0 rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+/* Fill is cut into 6px cells by a hard-stop mask, like a segmented ammo gauge. */
+.bar-list .bar-fill {
+  height: 100%;
+  border-radius: 0;
+  transition: width var(--med);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 6px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 6px);
+}
 .bar-sub { display: block; margin-top: 4px; font-size: 0.6875rem; color: var(--text-faint); }
 
 /* ============================ 3. HUD ============================ */
